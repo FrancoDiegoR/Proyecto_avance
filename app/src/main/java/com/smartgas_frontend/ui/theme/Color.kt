@@ -1,0 +1,41 @@
+package com.smartgas_frontend.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// SmartGas design system (mismos valores que :root en styles.css de la web)
+val Blue = Color(0xFF066CBB)
+val BlueDark = Color(0xFF063766)
+val BlueSoft = Color(0xFFDCEFFB)
+val Cyan = Color(0xFF28A9E6)
+val Orange = Color(0xFFE6501F)
+val OrangeSoft = Color(0xFFFFF0E9)
+val Green = Color(0xFF23B26D)
+val GreenSoft = Color(0xFFE5F8EE)
+val Red = Color(0xFFD64545)
+val RedSoft = Color(0xFFFFF0F0)
+val Yellow = Color(0xFFF0AA2C)
+val YellowSoft = Color(0xFFFFFBEB)
+val Ink = Color(0xFF17212F)
+val Muted = Color(0xFF6E7B88)
+val Line = Color(0xFFDFE8F1)
+val Surface = Color(0xFFFFFFFF)
+val Soft = Color(0xFFF4F8FB)
+val PageBackground = Color(0xFFF2F8FD)
+
+// Etiquetas (Tag) con contraste suficiente para texto blanco
+val TagSuccess = Color(0xFF1A8A54)
+val TagWarning = Color(0xFFB76E00)
+val TagDanger = Color(0xFFD64545)
+val TagInfo = Color(0xFF066CBB)
+val TagSecondary = Color(0xFF64748B)
+
+// Modo oscuro (body.dark-mode)
+val DarkBackground = Color(0xFF0D1726)
+val DarkSurface = Color(0xFF111F31)
+val DarkSurfaceHeader = Color(0xFF15283D)
+val DarkInput = Color(0xFF0F1B2B)
+val DarkLine = Color(0xFF263A52)
+val DarkInk = Color(0xFFE7EEF8)
+val DarkMuted = Color(0xFFA9BBCE)
+val DarkAccent = Color(0xFF8CC8FF)
+val DarkAccentContainer = Color(0xFF153A5A)
