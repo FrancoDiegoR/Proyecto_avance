@@ -7,6 +7,7 @@ import com.smartgas_frontend.incidentpreventionnotification.data.di.IncidentPrev
 import com.smartgas_frontend.kitchenmonitoring.data.di.KitchenMonitoringDataModule
 import com.smartgas_frontend.paymentmanagement.data.di.PaymentManagementDataModule
 import com.smartgas_frontend.shared.data.local.AppPreferences
+import com.smartgas_frontend.shared.data.local.HomeCache
 import com.smartgas_frontend.shared.data.local.SessionService
 import com.smartgas_frontend.shared.data.remote.ExternalWeatherService
 import com.smartgas_frontend.shared.data.repository.HomeRepository
@@ -36,11 +37,17 @@ object SharedDataModule {
         AppPreferences(SmartGasApplication.instance.applicationContext)
     }
 
+    private val homeCacheInstance: HomeCache by lazy {
+        HomeCache(SmartGasApplication.instance.applicationContext)
+    }
+
     fun getRetrofit(): Retrofit = retrofitInstance
 
     fun getSessionService(): SessionService = sessionServiceInstance
 
     fun getAppPreferences(): AppPreferences = appPreferencesInstance
+
+    fun getHomeCache(): HomeCache = homeCacheInstance
 
     fun getExternalWeatherService(): ExternalWeatherService {
         return getRetrofit().create(ExternalWeatherService::class.java)
@@ -53,7 +60,8 @@ object SharedDataModule {
             IncidentDetectionDataModule.getIncidentService(),
             IncidentPreventionNotificationDataModule.getAlertService(),
             PaymentManagementDataModule.getSubscriptionService(),
-            getExternalWeatherService()
+            getExternalWeatherService(),
+            getHomeCache()
         )
     }
 }

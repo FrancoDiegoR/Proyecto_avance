@@ -17,7 +17,9 @@ data class HomeSummary(
     val plan: Plan? = null,
     val subscription: Subscription? = null,
     val lastReading: SensorReading? = null,
-    val criticalZone: Zone? = null
+    val criticalZone: Zone? = null,
+    // Diseno 17: si no es null, los datos vienen de la copia local guardada a esta hora (sin conexion)
+    val offlineSavedAt: String? = null
 )
 
 data class Weather(

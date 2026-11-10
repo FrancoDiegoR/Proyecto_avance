@@ -1,6 +1,14 @@
 package com.smartgas_frontend.shared.presentation.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -69,7 +77,7 @@ data class NavigationItem(
  * Router principal: login, register y app (que requiere sesion).
  */
 @Composable
-fun AppNavigation() {
+fun AppNavigation(pendingAlertId: Int? = null, onAlertOpened: () -> Unit = {}) {
     val sessionService = SharedDataModule.getSessionService()
     val navController = rememberNavController()
 
@@ -84,6 +92,8 @@ fun AppNavigation() {
 
     val logout: () -> Unit = {
         sessionService.clear()
+        SharedDataModule.getHomeCache().clear()
+        IncidentPreventionNotificationPresentationModule.getPushAlertChecker().reset()
         navController.navigate(Routes.LOGIN) {
             popUpTo(navController.graph.id) { inclusive = true }
         }
@@ -111,7 +121,7 @@ fun AppNavigation() {
         }
 
         composable(Routes.APP) {
-            Home(onLogout = logout)
+            Home(onLogout = logout, pendingAlertId = pendingAlertId, onAlertOpened = onAlertOpened)
         }
     }
 }
@@ -125,12 +135,31 @@ private fun NavHostController.navigateSection(route: String) {
 
 /** Contenido de la app con la barra inferior del diseno (como Home() de MealsCompose). */
 @Composable
-private fun Home(onLogout: () -> Unit) {
+private fun Home(onLogout: () -> Unit, pendingAlertId: Int?, onAlertOpened: () -> Unit) {
     val strings = LocalStrings.current
     val es = strings.isSpanish
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    // Diseno 11: Android 13+ pide permiso para mostrar las alertas como notificacion
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // Se toco una notificacion push: abre el detalle de esa alerta (diseno 12)
+    LaunchedEffect(pendingAlertId) {
+        if (pendingAlertId != null) {
+            navController.navigate(Routes.alertDetail(pendingAlertId))
+            onAlertOpened()
+        }
+    }
 
     val navigate: (String) -> Unit = { route -> navController.navigateSection(route) }
 
@@ -177,7 +206,12 @@ private fun Home(onLogout: () -> Unit) {
                 composable(Routes.HOME) {
                     val viewModel = viewModel { SharedPresentationModule.getHomeViewModel() }
 
-                    HomeScreen(viewModel = viewModel, onNavigate = navigate)
+                    HomeScreen(
+                        viewModel = viewModel,
+                        // "See all" va a la pestana Zones; QR y perfil se abren encima del Home
+                        onNavigate = { route -> if (route == Routes.ZONES) navigate(route) else navController.navigate(route) },
+                        onOpenZone = { zoneId -> navController.navigate(Routes.zoneDetail(zoneId)) }
+                    )
                 }
 
                 composable(Routes.ZONES) {
@@ -244,15 +278,24 @@ private fun Home(onLogout: () -> Unit) {
                         navArgument(Routes.ZONE_ID_ARG) {
                             type = NavType.IntType
                             defaultValue = -1
+                        },
+                        navArgument(Routes.SCAN_ARG) {
+                            type = NavType.BoolType
+                            defaultValue = false
                         }
                     )
                 ) { entry ->
                     val zoneId = entry.arguments?.getInt(Routes.ZONE_ID_ARG)?.takeIf { it >= 0 }
+                    val startWithScan = entry.arguments?.getBoolean(Routes.SCAN_ARG) == true
                     val viewModel = viewModel(key = "add-sensor-$zoneId") {
                         KitchenMonitoringPresentationModule.getAddSensorViewModel(zoneId)
                     }
 
-                    AddSensorScreen(viewModel = viewModel, onClose = { navController.popBackStack() })
+                    AddSensorScreen(
+                        viewModel = viewModel,
+                        onClose = { navController.popBackStack() },
+                        startWithScan = startWithScan
+                    )
                 }
 
                 composable(Routes.ALERTS) {

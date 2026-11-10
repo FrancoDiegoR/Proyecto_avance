@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+    // Escaner QR del diseno 09 (ML Kit a traves de Google Play Services, sin permiso de camara)
+    implementation(libs.play.services.code.scanner)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

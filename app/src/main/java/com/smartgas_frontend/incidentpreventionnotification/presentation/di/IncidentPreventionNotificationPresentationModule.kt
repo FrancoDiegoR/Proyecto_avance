@@ -5,6 +5,9 @@ import com.smartgas_frontend.incidentdetection.data.di.IncidentDetectionDataModu
 import com.smartgas_frontend.incidentpreventionnotification.data.di.IncidentPreventionNotificationDataModule
 import com.smartgas_frontend.incidentpreventionnotification.presentation.alertdetail.AlertDetailViewModel
 import com.smartgas_frontend.incidentpreventionnotification.presentation.alerts.AlertsViewModel
+import com.smartgas_frontend.SmartGasApplication
+import com.smartgas_frontend.incidentpreventionnotification.presentation.push.AlertNotifier
+import com.smartgas_frontend.incidentpreventionnotification.presentation.push.PushAlertChecker
 import com.smartgas_frontend.shared.data.di.SharedDataModule
 
 object IncidentPreventionNotificationPresentationModule {
@@ -25,6 +28,22 @@ object IncidentPreventionNotificationPresentationModule {
             IamDataModule.getSettingsRepository(),
             SharedDataModule.getSessionService(),
             notificationId
+        )
+    }
+
+    fun getAlertNotifier(): AlertNotifier {
+        return AlertNotifier(SmartGasApplication.instance.applicationContext)
+    }
+
+    fun getPushAlertChecker(): PushAlertChecker {
+        return PushAlertChecker(
+            SmartGasApplication.instance.applicationContext,
+            IncidentPreventionNotificationDataModule.getAlertRepository(),
+            IncidentDetectionDataModule.getIncidentRepository(),
+            IamDataModule.getSettingsRepository(),
+            SharedDataModule.getSessionService(),
+            SharedDataModule.getAppPreferences(),
+            getAlertNotifier()
         )
     }
 }

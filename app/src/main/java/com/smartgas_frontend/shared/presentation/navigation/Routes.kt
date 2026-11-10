@@ -25,10 +25,17 @@ object Routes {
     const val EDIT_SENSOR = "app/zones/sensor/{$SENSOR_ID_ARG}/edit"
     fun editSensor(sensorId: Int) = "app/zones/sensor/$sensorId/edit"
 
-    // zoneId es opcional: desde Zone detail llega preseleccionada, desde el + de Zones no
-    const val ADD_SENSOR = "app/zones/new/sensor?$ZONE_ID_ARG={$ZONE_ID_ARG}"
-    fun addSensor(zoneId: Int? = null) =
-        if (zoneId != null) "app/zones/new/sensor?$ZONE_ID_ARG=$zoneId" else "app/zones/new/sensor"
+    // zoneId es opcional: desde Zone detail llega preseleccionada, desde el + de Zones no.
+    // scan=true abre directamente el escaner QR (icono QR del Home, diseno 09).
+    const val SCAN_ARG = "scan"
+    const val ADD_SENSOR = "app/zones/new/sensor?$ZONE_ID_ARG={$ZONE_ID_ARG}&$SCAN_ARG={$SCAN_ARG}"
+    fun addSensor(zoneId: Int? = null, scan: Boolean = false): String {
+        val params = listOfNotNull(
+            zoneId?.let { "$ZONE_ID_ARG=$it" },
+            if (scan) "$SCAN_ARG=true" else null
+        )
+        return if (params.isEmpty()) "app/zones/new/sensor" else "app/zones/new/sensor?" + params.joinToString("&")
+    }
 
     // Cuelgan de app/alerts/ y app/history/ para que su pestana quede marcada
     const val NOTIFICATION_ID_ARG = "notificationId"

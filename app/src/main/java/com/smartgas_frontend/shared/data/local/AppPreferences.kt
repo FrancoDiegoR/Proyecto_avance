@@ -8,6 +8,8 @@ import androidx.compose.runtime.setValue
 private const val FILE = "smartgas_preferences"
 private const val THEME_KEY = "smartgas-theme"
 private const val LANGUAGE_KEY = "smartgas-language"
+private const val PUSH_KEY = "smartgas-push"
+private const val VIBRATE_KEY = "smartgas-vibrate-critical"
 private const val DEFAULT_LOCALE = "en"
 private val SUPPORTED_LOCALES = listOf("en", "es")
 
@@ -22,6 +24,24 @@ class AppPreferences(context: Context) {
 
     var darkMode by mutableStateOf(preferences.getString(THEME_KEY, "light") == "dark")
         private set
+
+    // Diseno 15: interruptores "Push notifications" y "Vibrate on critical alerts".
+    // Se guardan en el telefono porque los usa el aviso push (diseno 11) sin consultar al backend.
+    var pushEnabled by mutableStateOf(preferences.getBoolean(PUSH_KEY, true))
+        private set
+
+    var vibrateOnCritical by mutableStateOf(preferences.getBoolean(VIBRATE_KEY, true))
+        private set
+
+    fun updatePushEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(PUSH_KEY, enabled).apply()
+        pushEnabled = enabled
+    }
+
+    fun updateVibrateOnCritical(enabled: Boolean) {
+        preferences.edit().putBoolean(VIBRATE_KEY, enabled).apply()
+        vibrateOnCritical = enabled
+    }
 
     private fun readLanguage(): String {
         val saved = preferences.getString(LANGUAGE_KEY, null)

@@ -1,6 +1,29 @@
 package com.smartgas_frontend.kitchenmonitoring.presentation.addsensor
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import com.smartgas_frontend.kitchenmonitoring.presentation.components.startQrScan
+import com.smartgas_frontend.ui.theme.Blue
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -39,6 +62,14 @@ private class PageText(private val es: Boolean) {
     val editTitle = if (es) "Editar sensor" else "Edit sensor"
     val close = if (es) "Cerrar" else "Close"
     val save = if (es) "Guardar sensor" else "Save sensor"
+    val scanTitle = if (es) "Escanear el QR del sensor" else "Scan the sensor QR code"
+    val scanSubtitle = if (es) "Completa el código y el tipo automáticamente" else "Fills the code and type automatically"
+    val orManual = if (es) "— o ingresa los datos manualmente —" else "— or enter the details manually —"
+    val scanned = if (es) "QR leído: revisa los datos y guarda." else "QR read: check the details and save."
+    val invalidQr = if (es) "Ese QR no es de un sensor SmartGas." else "That QR is not a SmartGas sensor."
+    val scanError =
+        if (es) "No se pudo abrir el escáner. Ingresa los datos manualmente."
+        else "The scanner could not be opened. Enter the details manually."
 
     fun planInfo(plan: String, max: String, inUse: Int): String =
         if (es) "Tu plan $plan permite $max sensores · $inUse en uso"
@@ -46,7 +77,7 @@ private class PageText(private val es: Boolean) {
 }
 
 @Composable
-fun AddSensorScreen(viewModel: AddSensorViewModel, onClose: () -> Unit) {
+fun AddSensorScreen(viewModel: AddSensorViewModel, onClose: () -> Unit, startWithScan: Boolean = false) {
     val strings = LocalStrings.current
     val pageText = PageText(strings.isSpanish)
     val toaster = LocalToaster.current
@@ -54,6 +85,31 @@ fun AddSensorScreen(viewModel: AddSensorViewModel, onClose: () -> Unit) {
     val data = state.data ?: AddSensorData()
     val form = viewModel.form.value
     val formError = viewModel.formError.value
+    val context = LocalContext.current
+
+    // Abre el escaner de ML Kit y rellena el formulario con el resultado
+    val scan: () -> Unit = {
+        startQrScan(
+            context = context,
+            onResult = { raw ->
+                if (viewModel.applyScan(raw)) {
+                    toaster.add(ToastSeverity.Success, pageText.scanned)
+                } else {
+                    toaster.add(ToastSeverity.Warning, pageText.invalidQr)
+                }
+            },
+            onError = { toaster.add(ToastSeverity.Error, pageText.scanError) }
+        )
+    }
+
+    // Desde el icono QR del Home el escaner se abre solo, una unica vez
+    var autoScanDone by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(startWithScan) {
+        if (startWithScan && !autoScanDone) {
+            autoScanDone = true
+            scan()
+        }
+    }
 
     ContentPage {
         // Barra superior del diseno 08: X para cerrar + titulo
@@ -78,6 +134,18 @@ fun AddSensorScreen(viewModel: AddSensorViewModel, onClose: () -> Unit) {
         }
 
         if (state.data != null) {
+            // Diseno 08: tarjeta "Scan the sensor QR code" (solo al agregar)
+            if (!viewModel.isEditing) {
+                ScanQrCard(pageText = pageText, onClick = scan)
+                Text(
+                    pageText.orManual,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
             TextInput(
                 label = "${strings.t(R.string.sensorCode)} *",
                 value = form.code,
@@ -137,6 +205,41 @@ fun AddSensorScreen(viewModel: AddSensorViewModel, onClose: () -> Unit) {
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+    }
+}
+
+/** Tarjeta azul del diseno 08 que abre el escaner QR (diseno 09). */
+@Composable
+private fun ScanQrCard(pageText: PageText, onClick: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Blue.copy(alpha = 0.10f)),
+        border = BorderStroke(1.dp, Blue),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Blue),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = Color.White)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(pageText.scanTitle, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(pageText.scanSubtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

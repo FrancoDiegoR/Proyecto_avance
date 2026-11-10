@@ -11,211 +11,158 @@ import com.smartgas_frontend.iam.domain.model.AccountSettings
 import com.smartgas_frontend.iam.domain.model.EmergencyContact
 import com.smartgas_frontend.iam.domain.model.NotificationPreferences
 import com.smartgas_frontend.iam.domain.model.SafetySettings
-import com.smartgas_frontend.kitchenmonitoring.domain.model.Sensor
-import com.smartgas_frontend.kitchenmonitoring.domain.model.Zone
+import com.smartgas_frontend.paymentmanagement.data.repository.SubscriptionRepository
 import com.smartgas_frontend.shared.data.local.AppPreferences
 import com.smartgas_frontend.shared.data.local.SessionService
-import com.smartgas_frontend.shared.data.local.normalizeLocale
 import com.smartgas_frontend.shared.presentation.components.ToastSeverity
 import com.smartgas_frontend.shared.presentation.components.ToastViewModel
+import com.smartgas_frontend.shared.presentation.components.UiText
 import com.smartgas_frontend.shared.presentation.components.res
-import com.smartgas_frontend.shared.utils.formatNumber
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-data class SettingsForm(
-    val gasThreshold: String = "50",
-    val temperatureThreshold: String = "45",
+/** Todo lo que muestra la pantalla de Ajustes (diseno 15). */
+data class SettingsData(
+    val gasThreshold: Double = 50.0,
+    val temperatureThreshold: Double = 45.0,
     val notificationsEnabled: Boolean = true,
-    val language: String = "en",
-    val darkMode: Boolean = false
+    val contact: EmergencyContact = EmergencyContact(),
+    val planName: String = ""
 )
 
-data class SettingsData(
-    val zones: List<Zone> = emptyList(),
-    val sensors: List<Sensor> = emptyList()
-) {
-    fun sensorCount(zoneId: Int): Int = sensors.count { it.zoneId == zoneId }
-}
+private fun text(en: String, es: String): UiText = { if (it.isSpanish) es else en }
 
+/**
+ * Diseno 15: cada cambio se guarda al momento (no hay boton "Guardar"):
+ * - umbrales al soltar el slider, interruptores al tocarlos, contacto al cerrar su dialogo.
+ * Idioma, tema, push y vibracion tambien se guardan en el telefono (AppPreferences).
+ */
 class SettingsViewModel(
     private val repository: SettingsRepository,
+    private val subscriptionRepository: SubscriptionRepository,
     private val sessionService: SessionService,
-    private val preferences: AppPreferences
+    val preferences: AppPreferences
 ) : ToastViewModel() {
 
-    private val _state = mutableStateOf(UIState<SettingsData>(isLoading = true))
+    private val _state = mutableStateOf(UIState(isLoading = true, data = SettingsData()))
     val state: State<UIState<SettingsData>> get() = _state
 
-    private val _form = mutableStateOf(SettingsForm(language = preferences.language, darkMode = preferences.darkMode))
-    val form: State<SettingsForm> get() = _form
+    private fun current(): SettingsData = _state.value.data ?: SettingsData()
 
-    private val _emergencyContact = mutableStateOf(EmergencyContact())
-    val emergencyContact: State<EmergencyContact> get() = _emergencyContact
-
-    private val _saveLoading = mutableStateOf(false)
-    val saveLoading: State<Boolean> get() = _saveLoading
-
-    private var originalForm = _form.value
-    private var originalEmergencyContact = _emergencyContact.value
-
-    init {
-        loadData()
-    }
-
-    private fun applyVisualPreferences() {
-        preferences.setDarkTheme(_form.value.darkMode)
-    }
-
-    private fun applyLanguage(language: String) {
-        val normalizedLanguage = preferences.setSmartGasLocale(normalizeLocale(language))
-        _form.value = _form.value.copy(language = normalizedLanguage)
+    private fun update(data: SettingsData) {
+        _state.value = UIState(isLoading = _state.value.isLoading, data = data, message = _state.value.message)
     }
 
     fun loadData() {
-        _state.value = UIState(isLoading = true, data = _state.value.data)
+        _state.value = UIState(isLoading = true, data = current())
 
         viewModelScope.launch {
             val accountId = sessionService.getAccountId()
 
             val settings = async { repository.getSettings(accountId) }
             val contact = async { repository.getEmergencyContact(accountId) }
-            val zones = async { repository.getZones(accountId) }
-            val sensors = async { repository.getSensors(accountId) }
+            val subscription = async { subscriptionRepository.getSubscription(accountId) }
 
             val settingsResult = settings.await()
-            val contactResult = contact.await()
-            val zonesResult = zones.await()
-            val sensorsResult = sensors.await()
+            val loaded = settingsResult.data
 
-            val loadedSettings = settingsResult.data
-            val loadedContact = contactResult.data
+            if (settingsResult is Resource.Success && loaded != null) {
+                _state.value = UIState(
+                    data = SettingsData(
+                        gasThreshold = loaded.safety.gasThreshold,
+                        temperatureThreshold = loaded.safety.temperatureThreshold,
+                        notificationsEnabled = loaded.notifications.notificationsEnabled,
+                        contact = contact.await().data ?: EmergencyContact(),
+                        planName = subscription.await().data?.planName.orEmpty()
+                    )
+                )
+            } else {
+                _state.value = UIState(data = current(), message = settingsResult.message ?: "An error occurred")
+            }
+        }
+    }
 
-            if (settingsResult is Resource.Success && contactResult is Resource.Success &&
-                zonesResult is Resource.Success && sensorsResult is Resource.Success &&
-                loadedSettings != null && loadedContact != null
-            ) {
-                // Idioma y tema se leen de las preferencias locales, igual que la web usa localStorage.
-                _form.value = SettingsForm(
-                    gasThreshold = formatNumber(loadedSettings.safety.gasThreshold),
-                    temperatureThreshold = formatNumber(loadedSettings.safety.temperatureThreshold),
-                    notificationsEnabled = loadedSettings.notifications.notificationsEnabled,
+    // --- Umbrales: el slider cambia el valor en pantalla y se guarda al soltarlo ---
+
+    fun onGasThresholdChanged(value: Float) = update(current().copy(gasThreshold = value.roundToInt().toDouble()))
+
+    fun onTemperatureThresholdChanged(value: Float) =
+        update(current().copy(temperatureThreshold = value.roundToInt().toDouble()))
+
+    fun saveThresholds() = saveSettings()
+
+    // --- Interruptores ---
+
+    fun setPushEnabled(enabled: Boolean) {
+        preferences.updatePushEnabled(enabled)
+        update(current().copy(notificationsEnabled = enabled))
+        saveSettings()
+    }
+
+    fun setVibrateOnCritical(enabled: Boolean) {
+        // Solo afecta a este telefono: no se envia al backend
+        preferences.updateVibrateOnCritical(enabled)
+    }
+
+    fun setDarkMode(enabled: Boolean) {
+        preferences.setDarkTheme(enabled)
+        saveSettings()
+    }
+
+    fun setLanguage(language: String) {
+        preferences.setSmartGasLocale(language)
+        saveSettings()
+    }
+
+    private fun saveSettings() {
+        val data = current()
+
+        viewModelScope.launch {
+            val result = repository.saveSettings(
+                sessionService.getAccountId(),
+                AccountSettings(
+                    safety = SafetySettings(
+                        gasThreshold = data.gasThreshold,
+                        temperatureThreshold = data.temperatureThreshold
+                    ),
+                    notifications = NotificationPreferences(data.notificationsEnabled),
                     language = preferences.language,
                     darkMode = preferences.darkMode
                 )
-                _emergencyContact.value = loadedContact
+            )
 
-                originalForm = _form.value
-                originalEmergencyContact = _emergencyContact.value
-
-                _state.value = UIState(
-                    data = SettingsData(zones = zonesResult.data.orEmpty(), sensors = sensorsResult.data.orEmpty())
-                )
-            } else {
-                _state.value = UIState(data = _state.value.data, message = "An error occurred")
-            }
-        }
-    }
-
-    fun onFormChanged(form: SettingsForm) {
-        val previous = _form.value
-        _form.value = form
-
-        if (form.darkMode != previous.darkMode) applyVisualPreferences()
-        if (form.language != previous.language) applyLanguage(form.language)
-    }
-
-    fun onEmergencyContactChanged(contact: EmergencyContact) {
-        _emergencyContact.value = contact
-    }
-
-    private fun validateSettings(): Boolean {
-        val form = _form.value
-        val contact = _emergencyContact.value
-
-        val valid = (form.gasThreshold.toDoubleOrNull() ?: 0.0) > 0 &&
-            (form.temperatureThreshold.toDoubleOrNull() ?: 0.0) > 0 &&
-            contact.name.isNotBlank() &&
-            contact.phone.isNotBlank() &&
-            contact.email.isNotBlank()
-
-        if (!valid) {
-            toast(ToastSeverity.Warning, res(R.string.emptyFields))
-        }
-
-        return valid
-    }
-
-    fun saveAll() {
-        if (!validateSettings()) return
-
-        _saveLoading.value = true
-
-        viewModelScope.launch {
-            val accountId = sessionService.getAccountId()
-            val form = _form.value
-            val contact = _emergencyContact.value
-
-            val settings = async {
-                repository.saveSettings(
-                    accountId,
-                    AccountSettings(
-                        safety = SafetySettings(
-                            gasThreshold = form.gasThreshold.toDouble(),
-                            temperatureThreshold = form.temperatureThreshold.toDouble()
-                        ),
-                        notifications = NotificationPreferences(form.notificationsEnabled),
-                        language = form.language,
-                        darkMode = form.darkMode
-                    )
-                )
-            }
-            val emergency = async {
-                repository.saveEmergencyContact(
-                    accountId,
-                    contact.copy(name = contact.name.trim(), phone = contact.phone.trim(), email = contact.email.trim())
-                )
-            }
-
-            val settingsResult = settings.await()
-            val emergencyResult = emergency.await()
-
-            val savedSettings = settingsResult.data
-            val savedContact = emergencyResult.data
-
-            if (settingsResult is Resource.Success && emergencyResult is Resource.Success &&
-                savedSettings != null && savedContact != null
-            ) {
-                _form.value = form.copy(
-                    gasThreshold = formatNumber(savedSettings.safety.gasThreshold),
-                    temperatureThreshold = formatNumber(savedSettings.safety.temperatureThreshold),
-                    notificationsEnabled = savedSettings.notifications.notificationsEnabled,
-                    language = normalizeLocale(form.language)
-                )
-                _emergencyContact.value = savedContact
-
-                originalForm = _form.value
-                originalEmergencyContact = _emergencyContact.value
-
-                applyLanguage(_form.value.language)
-                applyVisualPreferences()
-
+            if (result is Resource.Success) {
                 toast(ToastSeverity.Success, res(R.string.settingsSaved))
             } else {
                 toast(ToastSeverity.Error, res(R.string.errorSaving))
             }
-
-            _saveLoading.value = false
         }
     }
 
-    fun resetAll() {
-        _form.value = originalForm
-        _emergencyContact.value = originalEmergencyContact
+    // --- Contacto de emergencia (dialogo) ---
 
-        applyLanguage(_form.value.language)
-        applyVisualPreferences()
+    /** Devuelve false (y no guarda) si falta algun dato; [onSaved] se llama si el backend lo acepto. */
+    fun saveEmergencyContact(contact: EmergencyContact, onSaved: () -> Unit): Boolean {
+        val clean = contact.copy(name = contact.name.trim(), phone = contact.phone.trim(), email = contact.email.trim())
 
-        toast(ToastSeverity.Info, res(R.string.resetApplied))
+        if (clean.name.isBlank() || clean.phone.isBlank() || clean.email.isBlank()) {
+            toast(ToastSeverity.Warning, res(R.string.emptyFields))
+            return false
+        }
+
+        viewModelScope.launch {
+            val result = repository.saveEmergencyContact(sessionService.getAccountId(), clean)
+            val saved = result.data
+
+            if (result is Resource.Success && saved != null) {
+                update(current().copy(contact = saved))
+                toast(ToastSeverity.Success, text("Emergency contact saved.", "Contacto de emergencia guardado."))
+                onSaved()
+            } else {
+                toast(ToastSeverity.Error, res(R.string.errorSaving))
+            }
+        }
+        return true
     }
 }

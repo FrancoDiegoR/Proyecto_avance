@@ -1,5 +1,6 @@
 package com.smartgas_frontend.shared.data.repository
 
+import com.smartgas_frontend.shared.data.local.HomeCache
 import com.smartgas_frontend.common.Constants
 import com.smartgas_frontend.common.Resource
 import com.smartgas_frontend.incidentdetection.data.remote.IncidentService
@@ -34,12 +35,29 @@ class HomeRepository(
     private val incidentService: IncidentService,
     private val alertService: AlertService,
     private val subscriptionService: SubscriptionService,
-    private val weatherService: ExternalWeatherService
+    private val weatherService: ExternalWeatherService,
+    private val cache: HomeCache
 ) {
 
     private fun normalizeStatus(status: String): String = if (status == "Active") "Warning" else status
 
+    /**
+     * Si el backend responde, guarda una copia local; si falla (sin conexion), devuelve esa copia
+     * con offlineSavedAt para que el Home muestre el aviso de modo offline (diseno 17).
+     */
     suspend fun getDashboardData(accountId: Int): Resource<HomeSummary> = withContext(Dispatchers.IO) {
+        val result = fetchDashboardData(accountId)
+        val summary = result.data
+
+        if (result is Resource.Success && summary != null) {
+            cache.saveSummary(summary)
+            result
+        } else {
+            cache.loadSummary()?.let { Resource.Success(it) } ?: result
+        }
+    }
+
+    private suspend fun fetchDashboardData(accountId: Int): Resource<HomeSummary> = withContext(Dispatchers.IO) {
         safeCall {
             coroutineScope {
                 val sensorsResponse = async { sensorService.getSensors(accountId).bodyOrThrow() }
@@ -113,6 +131,14 @@ class HomeRepository(
         latitude: Double = Constants.DEFAULT_LATITUDE,
         longitude: Double = Constants.DEFAULT_LONGITUDE
     ): Resource<Weather> = withContext(Dispatchers.IO) {
-        safeCall { weatherService.getCurrentWeather(latitude, longitude).bodyOrThrow().toWeather() }
+        val result = safeCall { weatherService.getCurrentWeather(latitude, longitude).bodyOrThrow().toWeather() }
+        val weather = result.data
+
+        if (result is Resource.Success && weather != null) {
+            cache.saveWeather(weather)
+            result
+        } else {
+            cache.loadWeather()?.let { Resource.Success(it) } ?: result
+        }
     }
 }

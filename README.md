@@ -66,10 +66,24 @@ Usuario de prueba: `usuario@smartgas.com` / `smartgas`.
 
 ## Estado del avance (según diseños 01–17)
 
-**Hecho:** Sign in (01–02), Create account (03), Zones (05), Zone detail (06), Sensor detail + edición (07),
-Add sensor (08), Alerts (10), Alert detail (12), Incident (13), History (14) con filtros y exportación CSV, Plans (16), Settings con cierre de sesión, "Keep me signed in".
+**Hecho:** Sign in (01–02), Create account (03), Home (04), Zones (05), Zone detail (06), Sensor detail + edición (07),
+Add sensor (08), escáner QR (09), Alerts (10), notificaciones push (11), Alert detail (12), Incident (13),
+History (14) con filtros y exportación CSV, Settings (15), Plans (16), modo offline (17), "Keep me signed in".
 
-**Por adaptar al diseño:** Home (04), Settings (15).
+**Pendiente:** paso 2 del registro, notas del incidente, intentos restantes y recuperación de contraseña
+(requieren cambios en el backend).
 
-**Pendiente:** QR (09), push (11), notas del incidente (el backend no las expone), modo offline (17),
-actualización automática de datos, intentos restantes y recuperación de contraseña (requieren backend).
+## Funciones del dispositivo
+
+- **QR (09):** usa ML Kit (Google code scanner); no pide permiso de cámara. La etiqueta del sensor puede ser JSON
+  (`{"code":"GLP-ST-03","type":"Gas","name":"..."}`), `code=...;type=...` o solo el código.
+  QR de prueba: `docs/qr/qr-sensor-GLP-ST-03.png`.
+- **Push (11):** sin Firebase; la app consulta `/notifications` cada 10 s mientras está abierta o en segundo plano
+  y muestra cada alerta nueva con los botones *Confirm* y *Call contact*. Tocarla abre el detalle.
+- **Offline (17):** el Home guarda en el teléfono el último resumen recibido; sin conexión lo muestra con el aviso
+  "You are offline · showing data saved at HH:mm".
+
+Para simular una alerta con el mock:
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:5048/api/v1/sensor-readings -ContentType 'application/json' -Body '{"sensorCode":"SG-003","gasLevel":78,"temperature":29}'
+```

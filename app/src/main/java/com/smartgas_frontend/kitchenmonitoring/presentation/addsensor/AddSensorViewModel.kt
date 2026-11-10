@@ -1,5 +1,6 @@
 package com.smartgas_frontend.kitchenmonitoring.presentation.addsensor
 
+import com.smartgas_frontend.kitchenmonitoring.presentation.sensors.sensorTypes
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -66,6 +67,28 @@ class AddSensorViewModel(
 
     init {
         loadData()
+    }
+
+    /**
+     * Rellena el formulario con lo que trae el QR (diseno 09).
+     * El tipo se busca entre los tipos validos ("Gas LP" -> "Gas"); si no coincide se deja el actual.
+     * Devuelve false si el QR no tiene un codigo de sensor.
+     */
+    fun applyScan(raw: String): Boolean {
+        val scanned = parseSensorQr(raw) ?: return false
+        val current = _form.value
+        val type = scanned.type?.let { scannedType ->
+            sensorTypes.firstOrNull { it.equals(scannedType, ignoreCase = true) }
+                ?: sensorTypes.firstOrNull { scannedType.contains(it, ignoreCase = true) }
+        }
+
+        _form.value = current.copy(
+            code = scanned.code,
+            type = type ?: current.type,
+            name = scanned.name?.ifBlank { null } ?: current.name
+        )
+        _formError.value = null
+        return true
     }
 
     fun loadData() {

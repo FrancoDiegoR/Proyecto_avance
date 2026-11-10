@@ -5,6 +5,7 @@ import com.smartgas_frontend.iam.presentation.login.LoginViewModel
 import com.smartgas_frontend.iam.presentation.profile.ProfileViewModel
 import com.smartgas_frontend.iam.presentation.register.RegisterViewModel
 import com.smartgas_frontend.iam.presentation.settings.SettingsViewModel
+import com.smartgas_frontend.paymentmanagement.data.di.PaymentManagementDataModule
 import com.smartgas_frontend.shared.data.di.SharedDataModule
 
 object IamPresentationModule {
@@ -24,6 +25,7 @@ object IamPresentationModule {
     fun getSettingsViewModel(): SettingsViewModel {
         return SettingsViewModel(
             IamDataModule.getSettingsRepository(),
+            PaymentManagementDataModule.getSubscriptionRepository(),
             SharedDataModule.getSessionService(),
             SharedDataModule.getAppPreferences()
         )
