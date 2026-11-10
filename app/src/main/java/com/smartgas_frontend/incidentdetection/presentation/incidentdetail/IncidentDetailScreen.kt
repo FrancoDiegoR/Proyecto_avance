@@ -81,7 +81,7 @@ private class PageText(val es: Boolean) {
 
 private fun severityStyle(severity: String?): TagSeverity = when (severity.orEmpty().lowercase()) {
     "critical" -> TagSeverity.Danger
-    "high" -> TagSeverity.Warning
+    "high", "warning" -> TagSeverity.Warning
     "medium" -> TagSeverity.Info
     else -> TagSeverity.Success
 }

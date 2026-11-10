@@ -19,14 +19,18 @@ data class Incident(
 ) {
     /** Gas detectado: el campo directo o, si no llega, el que viene dentro de "Gas: 62 ppm". */
     val gasReading: Double?
-        get() = gasLevel ?: GAS_REGEX.find(detectedValue)?.groupValues?.get(1)?.toDoubleOrNull()
+        get() = gasLevel ?: GAS_REGEX.find(detectedValue)?.firstNumber()
 
     /** Temperatura detectada, con el mismo respaldo que [gasReading]. */
     val temperatureReading: Double?
-        get() = temperature ?: TEMP_REGEX.find(detectedValue)?.groupValues?.get(1)?.toDoubleOrNull()
+        get() = temperature ?: TEMP_REGEX.find(detectedValue)?.firstNumber()
 
     private companion object {
-        val GAS_REGEX = Regex("Gas:\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
-        val TEMP_REGEX = Regex("Temp(?:erature|eratura)?:\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
+        /** Primer grupo con valor ("Gas: 62" o "62 ppm"). */
+        fun MatchResult.firstNumber(): Double? =
+            groupValues.drop(1).firstOrNull { it.isNotEmpty() }?.toDoubleOrNull()
+
+        val GAS_REGEX = Regex("(?:Gas:\\s*([\\d.]+))|(?:([\\d.]+)\\s*ppm)", RegexOption.IGNORE_CASE)
+        val TEMP_REGEX = Regex("(?:Temp(?:erature|eratura)?:\\s*([\\d.]+))|(?:([\\d.]+)\\s*°C)", RegexOption.IGNORE_CASE)
     }
 }
