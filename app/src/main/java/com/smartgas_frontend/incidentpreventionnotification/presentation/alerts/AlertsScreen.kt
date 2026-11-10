@@ -1,14 +1,19 @@
 package com.smartgas_frontend.incidentpreventionnotification.presentation.alerts
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.smartgas_frontend.incidentpreventionnotification.domain.model.Notification
 import com.smartgas_frontend.shared.i18n.LocalStrings
@@ -49,6 +54,8 @@ private class PageText(es: Boolean) {
     val yes = if (es) "Sí" else "Yes"
     val no = "No"
 
+    val seeDetail = if (es) "Ver detalle" else "See details"
+
     val noNotifications = if (es) "No hay notificaciones disponibles." else "No notifications available."
 }
 
@@ -80,7 +87,7 @@ private fun notificationMessage(strings: Strings, notification: Notification): S
 }
 
 @Composable
-fun AlertsScreen(viewModel: AlertsViewModel) {
+fun AlertsScreen(viewModel: AlertsViewModel, onOpenAlert: (Int) -> Unit) {
     val strings = LocalStrings.current
     val pageText = PageText(strings.isSpanish)
     val state = viewModel.state.value
@@ -109,7 +116,8 @@ fun AlertsScreen(viewModel: AlertsViewModel) {
                 pageText = pageText,
                 notification = notification,
                 onMarkRead = { viewModel.markNotificationRead(notification) },
-                onConfirm = { viewModel.confirmNotification(notification) }
+                onConfirm = { viewModel.confirmNotification(notification) },
+                onOpen = { onOpenAlert(notification.id) }
             )
         }
 
@@ -126,9 +134,15 @@ private fun NotificationCard(
     pageText: PageText,
     notification: Notification,
     onMarkRead: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    onOpen: () -> Unit
 ) {
-    PanelCard {
+    // Toda la tarjeta abre el detalle (diseno 12)
+    PanelCard(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onOpen)
+    ) {
         Text(notificationMessage(strings, notification), color = MaterialTheme.colorScheme.onSurface)
 
         Column {
@@ -148,17 +162,16 @@ private fun NotificationCard(
             DetailRow(pageText.detectedAt, formatDate(notification.createdAt))
         }
 
-        if (!notification.read || !notification.confirmed) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (!notification.read) {
-                    SecondaryButton(label = pageText.markAsRead, onClick = onMarkRead)
-                }
-                if (!notification.confirmed) {
-                    PrimaryButton(label = pageText.confirmReceipt, onClick = onConfirm, containerColor = TagSuccess)
-                }
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SecondaryButton(label = pageText.seeDetail, icon = Icons.AutoMirrored.Outlined.ArrowForward, onClick = onOpen)
+            if (!notification.read) {
+                SecondaryButton(label = pageText.markAsRead, onClick = onMarkRead)
+            }
+            if (!notification.confirmed) {
+                PrimaryButton(label = pageText.confirmReceipt, onClick = onConfirm, containerColor = TagSuccess)
             }
         }
     }

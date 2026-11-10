@@ -64,12 +64,12 @@ http.createServer((req, res) => {
     }
     if (m === 'GET' && p === '/incidents') return send(res, 200, byAccount(db.incidents));
     if ((r = p.match(/^\/incidents\/(\d+)\/(review|resolve|false-alarm)$/)) && m === 'PATCH') {
-      const i = db.incidents.find(x => x.id === +r[1]); i.status = { review: 'Reviewed', resolve: 'Resolved', 'false-alarm': 'FalseAlarm' }[r[2]]; return send(res, 200, i);
+      const i = db.incidents.find(x => x.id === +r[1]); i.status = { review: 'Reviewed', resolve: 'Resolved', 'false-alarm': 'FalseAlarm' }[r[2]]; i.updatedAt = now(); if (r[2] !== 'review') i.resolvedAt = now(); return send(res, 200, i);
     }
     if (m === 'GET' && p === '/alerts') return send(res, 200, byAccount(db.alerts));
     if (m === 'GET' && p === '/notifications') return send(res, 200, byAccount(db.notifications));
     if ((r = p.match(/^\/notifications\/(\d+)\/(read|confirm)$/)) && m === 'PATCH') {
-      const n = db.notifications.find(x => x.id === +r[1]); if (r[2] === 'read') { n.read = true; n.isRead = true; } else { n.confirmed = true; n.isConfirmed = true; } return send(res, 200, n);
+      const n = db.notifications.find(x => x.id === +r[1]); if (r[2] === 'read') { n.read = true; n.isRead = true; n.readAt = now(); } else { n.confirmed = true; n.isConfirmed = true; n.confirmedAt = now(); } return send(res, 200, n);
     }
     if ((r = p.match(/^\/profiles\/(\d+)$/))) {
       const pr = db.profiles[0]; if (m === 'PATCH') Object.assign(pr, body);

@@ -18,7 +18,9 @@ data class NotificationDto(
     val createdAt: String?,
     val sentAt: String?,
     val messageKey: String?,
-    val messageParams: JsonElement?
+    val messageParams: JsonElement?,
+    val readAt: String?,
+    val confirmedAt: String?
 )
 
 fun NotificationDto.toNotification() = Notification(
@@ -32,5 +34,7 @@ fun NotificationDto.toNotification() = Notification(
     confirmed = confirmed ?: isConfirmed ?: false,
     createdAt = createdAt ?: sentAt,
     messageKey = messageKey,
-    messageParams = messageParams.asStringMap()
+    messageParams = messageParams.asStringMap(),
+    readAt = readAt,
+    confirmedAt = confirmedAt
 )

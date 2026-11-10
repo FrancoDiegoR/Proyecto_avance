@@ -38,6 +38,8 @@ import com.smartgas_frontend.iam.presentation.register.RegisterScreen
 import com.smartgas_frontend.iam.presentation.settings.SettingsScreen
 import com.smartgas_frontend.incidentdetection.presentation.di.IncidentDetectionPresentationModule
 import com.smartgas_frontend.incidentdetection.presentation.history.HistoryScreen
+import com.smartgas_frontend.incidentdetection.presentation.incidentdetail.IncidentDetailScreen
+import com.smartgas_frontend.incidentpreventionnotification.presentation.alertdetail.AlertDetailScreen
 import com.smartgas_frontend.incidentpreventionnotification.presentation.alerts.AlertsScreen
 import com.smartgas_frontend.incidentpreventionnotification.presentation.di.IncidentPreventionNotificationPresentationModule
 import com.smartgas_frontend.kitchenmonitoring.presentation.di.KitchenMonitoringPresentationModule
@@ -256,13 +258,47 @@ private fun Home(onLogout: () -> Unit) {
                 composable(Routes.ALERTS) {
                     val viewModel = viewModel { IncidentPreventionNotificationPresentationModule.getAlertsViewModel() }
 
-                    AlertsScreen(viewModel = viewModel)
+                    AlertsScreen(
+                        viewModel = viewModel,
+                        onOpenAlert = { id -> navController.navigate(Routes.alertDetail(id)) }
+                    )
+                }
+
+                composable(
+                    route = Routes.ALERT_DETAIL,
+                    arguments = listOf(navArgument(Routes.NOTIFICATION_ID_ARG) { type = NavType.IntType })
+                ) { entry ->
+                    val notificationId = entry.arguments?.getInt(Routes.NOTIFICATION_ID_ARG) ?: 0
+                    val viewModel = viewModel(key = "alert-$notificationId") {
+                        IncidentPreventionNotificationPresentationModule.getAlertDetailViewModel(notificationId)
+                    }
+
+                    AlertDetailScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() },
+                        onOpenIncident = { id -> navController.navigate(Routes.incidentDetail(id)) }
+                    )
                 }
 
                 composable(Routes.HISTORY) {
                     val viewModel = viewModel { IncidentDetectionPresentationModule.getHistoryViewModel() }
 
-                    HistoryScreen(viewModel = viewModel)
+                    HistoryScreen(
+                        viewModel = viewModel,
+                        onOpenIncident = { id -> navController.navigate(Routes.incidentDetail(id)) }
+                    )
+                }
+
+                composable(
+                    route = Routes.INCIDENT_DETAIL,
+                    arguments = listOf(navArgument(Routes.INCIDENT_ID_ARG) { type = NavType.IntType })
+                ) { entry ->
+                    val incidentId = entry.arguments?.getInt(Routes.INCIDENT_ID_ARG) ?: 0
+                    val viewModel = viewModel(key = "incident-$incidentId") {
+                        IncidentDetectionPresentationModule.getIncidentDetailViewModel(incidentId)
+                    }
+
+                    IncidentDetailScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
                 }
 
                 composable(Routes.SETTINGS) {

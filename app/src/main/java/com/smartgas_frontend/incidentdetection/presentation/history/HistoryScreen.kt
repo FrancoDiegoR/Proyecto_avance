@@ -1,5 +1,6 @@
 package com.smartgas_frontend.incidentdetection.presentation.history
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -12,7 +13,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -107,7 +110,7 @@ private fun incidentValueLines(incident: Incident): List<String> {
 }
 
 @Composable
-fun HistoryScreen(viewModel: HistoryViewModel) {
+fun HistoryScreen(viewModel: HistoryViewModel, onOpenIncident: (Int) -> Unit) {
     val strings = LocalStrings.current
     val pageText = PageText(strings.isSpanish)
     val state = viewModel.state.value
@@ -149,7 +152,7 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
         when (activeTab) {
             TAB_ACTIVE -> {
                 data.activeIncidents.forEach { incident ->
-                    IncidentCard(strings, pageText, incident) {
+                    IncidentCard(strings, pageText, incident, onOpen = { onOpenIncident(incident.id) }) {
                         IncidentActions(
                             pageText = pageText,
                             incident = incident,
@@ -167,7 +170,7 @@ fun HistoryScreen(viewModel: HistoryViewModel) {
 
             else -> {
                 data.historyIncidents.forEach { incident ->
-                    IncidentCard(strings, pageText, incident)
+                    IncidentCard(strings, pageText, incident, onOpen = { onOpenIncident(incident.id) })
                 }
 
                 if (!loading && data.historyIncidents.isEmpty()) {
@@ -183,9 +186,15 @@ private fun IncidentCard(
     strings: Strings,
     pageText: PageText,
     incident: Incident,
+    onOpen: () -> Unit,
     actions: (@Composable () -> Unit)? = null
 ) {
-    PanelCard {
+    // Toda la tarjeta abre el detalle (diseno 13)
+    PanelCard(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onOpen)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,

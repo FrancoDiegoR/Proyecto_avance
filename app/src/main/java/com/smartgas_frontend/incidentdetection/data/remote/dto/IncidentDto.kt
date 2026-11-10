@@ -26,7 +26,8 @@ data class IncidentDto(
     val status: String?,
     val detectedAt: String?,
     val createdAt: String?,
-    val updatedAt: String?
+    val updatedAt: String?,
+    val resolvedAt: String?
 )
 
 data class IncidentZoneDto(
@@ -56,6 +57,7 @@ fun IncidentDto.toIncident(): Incident {
         severity = severity ?: "",
         status = status?.takeIf { it.isNotBlank() } ?: "Active",
         detectedAt = detectedAt ?: createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        resolvedAt = resolvedAt
     )
 }

@@ -30,6 +30,14 @@ object Routes {
     fun addSensor(zoneId: Int? = null) =
         if (zoneId != null) "app/zones/new/sensor?$ZONE_ID_ARG=$zoneId" else "app/zones/new/sensor"
 
+    // Cuelgan de app/alerts/ y app/history/ para que su pestana quede marcada
+    const val NOTIFICATION_ID_ARG = "notificationId"
+    const val ALERT_DETAIL = "app/alerts/{$NOTIFICATION_ID_ARG}"   // diseno 12
+    fun alertDetail(notificationId: Int) = "app/alerts/$notificationId"
+    const val INCIDENT_ID_ARG = "incidentId"
+    const val INCIDENT_DETAIL = "app/history/{$INCIDENT_ID_ARG}"   // diseno 13
+    fun incidentDetail(incidentId: Int) = "app/history/$incidentId"
+
     const val SENSORS = "app/sensors"     // lista de sensores (desde Settings)
     const val PROFILE = "app/profile"     // se abre con el icono de usuario de Home
     const val PLANS = "app/plans"

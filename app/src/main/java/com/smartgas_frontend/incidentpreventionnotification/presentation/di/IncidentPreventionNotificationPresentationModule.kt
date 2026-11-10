@@ -1,6 +1,9 @@
 package com.smartgas_frontend.incidentpreventionnotification.presentation.di
 
+import com.smartgas_frontend.iam.data.di.IamDataModule
+import com.smartgas_frontend.incidentdetection.data.di.IncidentDetectionDataModule
 import com.smartgas_frontend.incidentpreventionnotification.data.di.IncidentPreventionNotificationDataModule
+import com.smartgas_frontend.incidentpreventionnotification.presentation.alertdetail.AlertDetailViewModel
 import com.smartgas_frontend.incidentpreventionnotification.presentation.alerts.AlertsViewModel
 import com.smartgas_frontend.shared.data.di.SharedDataModule
 
@@ -10,6 +13,16 @@ object IncidentPreventionNotificationPresentationModule {
         return AlertsViewModel(
             IncidentPreventionNotificationDataModule.getAlertRepository(),
             SharedDataModule.getSessionService()
+        )
+    }
+
+    fun getAlertDetailViewModel(notificationId: Int): AlertDetailViewModel {
+        return AlertDetailViewModel(
+            IncidentPreventionNotificationDataModule.getAlertRepository(),
+            IncidentDetectionDataModule.getIncidentRepository(),
+            IamDataModule.getSettingsRepository(),
+            SharedDataModule.getSessionService(),
+            notificationId
         )
     }
 }

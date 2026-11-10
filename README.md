@@ -41,6 +41,8 @@ Barra inferior según el diseño: **Home · Zones · Alerts · History · Settin
 
 - Zones → tocar una zona abre **Zone detail**; el botón **+** abre **Add sensor**.
 - Zone detail → tocar un sensor abre **Sensor detail** (con ✏️ para editar).
+- Alerts → tocar una alerta abre **Alert detail** (pasos a seguir, confirmar, llamar al contacto o al 116, falsa alarma).
+- History → tocar un incidente abre **Incident** (línea de tiempo, resolver, falsa alarma).
 - Home → ícono de usuario abre **Profile**. Settings → **Cerrar sesión**.
 
 ## Cómo ejecutarlo
@@ -65,9 +67,9 @@ Usuario de prueba: `usuario@smartgas.com` / `smartgas`.
 ## Estado del avance (según diseños 01–17)
 
 **Hecho:** Sign in (01–02), Create account (03), Zones (05), Zone detail (06), Sensor detail + edición (07),
-Add sensor (08), Plans (16), Settings con cierre de sesión, "Keep me signed in".
+Add sensor (08), Alert detail (12), Incident (13), Plans (16), Settings con cierre de sesión, "Keep me signed in".
 
 **Por adaptar al diseño:** Home (04), Alerts (10), History (14), Settings (15).
 
-**Pendiente:** QR (09), push (11), Alert detail (12), Incident (13), modo offline (17),
+**Pendiente:** QR (09), push (11), notas del incidente (el backend no las expone), modo offline (17),
 actualización automática de datos, intentos restantes y recuperación de contraseña (requieren backend).

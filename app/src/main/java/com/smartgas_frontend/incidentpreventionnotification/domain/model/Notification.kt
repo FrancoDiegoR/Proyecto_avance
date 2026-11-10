@@ -10,5 +10,7 @@ data class Notification(
     val confirmed: Boolean,
     val createdAt: String?,
     val messageKey: String?,
-    val messageParams: Map<String, String>
+    val messageParams: Map<String, String>,
+    val readAt: String? = null,
+    val confirmedAt: String? = null
 )
