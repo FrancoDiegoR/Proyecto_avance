@@ -12,6 +12,8 @@ object IncidentPreventionNotificationPresentationModule {
     fun getAlertsViewModel(): AlertsViewModel {
         return AlertsViewModel(
             IncidentPreventionNotificationDataModule.getAlertRepository(),
+            IncidentDetectionDataModule.getIncidentRepository(),
+            IamDataModule.getSettingsRepository(),
             SharedDataModule.getSessionService()
         )
     }

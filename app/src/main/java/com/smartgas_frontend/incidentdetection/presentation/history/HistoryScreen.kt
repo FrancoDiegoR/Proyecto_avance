@@ -1,249 +1,414 @@
 package com.smartgas_frontend.incidentdetection.presentation.history
 
+import android.content.Context
+import android.content.Intent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.smartgas_frontend.incidentdetection.domain.model.Incident
 import com.smartgas_frontend.shared.i18n.LocalStrings
 import com.smartgas_frontend.shared.i18n.Strings
 import com.smartgas_frontend.shared.presentation.components.ContentPage
-import com.smartgas_frontend.shared.presentation.components.DetailRow
 import com.smartgas_frontend.shared.presentation.components.EmptyMessage
 import com.smartgas_frontend.shared.presentation.components.LoadingState
-import com.smartgas_frontend.shared.presentation.components.PageHeader
-import com.smartgas_frontend.shared.presentation.components.PanelCard
-import com.smartgas_frontend.shared.presentation.components.PrimaryButton
-import com.smartgas_frontend.shared.presentation.components.SecondaryButton
-import com.smartgas_frontend.shared.presentation.components.Tag
+import com.smartgas_frontend.shared.presentation.components.SoftPill
 import com.smartgas_frontend.shared.presentation.components.ToastEffect
-import com.smartgas_frontend.shared.utils.TagSeverity
 import com.smartgas_frontend.shared.utils.formatDate
-import com.smartgas_frontend.shared.utils.formatNumber
+import com.smartgas_frontend.shared.utils.formatDuration
+import com.smartgas_frontend.shared.utils.formatListDateTime
 import com.smartgas_frontend.shared.utils.normalizeStatus
 import com.smartgas_frontend.shared.utils.trIncidentType
-import com.smartgas_frontend.shared.utils.trSeverity
 import com.smartgas_frontend.shared.utils.trStatus
 import com.smartgas_frontend.shared.utils.trZone
+import com.smartgas_frontend.ui.theme.Blue
+import com.smartgas_frontend.ui.theme.Orange
+import com.smartgas_frontend.ui.theme.Red
+import com.smartgas_frontend.ui.theme.TagSecondary
 import com.smartgas_frontend.ui.theme.TagSuccess
-import com.smartgas_frontend.ui.theme.TagWarning
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/** Textos propios de la pagina (la web los define en `pageText`, fuera de los locales). */
-private class PageText(es: Boolean) {
+/** Textos propios de la pagina (mismo patron PageText que el resto de pantallas). */
+private class PageText(val es: Boolean) {
     val title = if (es) "Historial" else "History"
-    val subtitle =
-        if (es) "Incidentes detectados automáticamente por el sistema IoT."
-        else "Incidents automatically detected by the IoT system."
-    val refresh = if (es) "Actualizar" else "Refresh"
-    val activeTab = if (es) "Incidentes Activos" else "Active Incidents"
-    val historyTab = if (es) "Historial" else "History"
-
-    val zone = if (es) "Zona" else "Zone"
-    val sensor = "Sensor"
-    val detectedValue = if (es) "Valor Detectado" else "Detected Value"
-    val detectedAt = if (es) "Detectado" else "Detected At"
-
-    val review = if (es) "Revisar" else "Review"
-    val resolve = if (es) "Resolver" else "Resolve"
+    val export = if (es) "Exportar" else "Export"
+    val dateRange = if (es) "Rango de fechas" else "Date range"
+    val allDates = if (es) "Todas las fechas" else "All dates"
+    val pickRange = if (es) "Elegir fechas" else "Pick dates"
+    val clear = if (es) "Quitar" else "Clear"
+    val apply = if (es) "Aplicar" else "Apply"
+    val cancel = if (es) "Cancelar" else "Cancel"
+    val allZones = if (es) "Todas las zonas" else "All zones"
+    val critical = if (es) "Crítico" else "Critical"
+    val high = if (es) "Alto" else "High"
     val falseAlarm = if (es) "Falsa alarma" else "False alarm"
-
-    val noActiveIncidents = if (es) "Sin incidentes activos." else "No active incidents."
-    val noHistoryIncidents = if (es) "No hay incidentes históricos." else "No historical incidents."
+    val incidents = if (es) "Incidentes" else "Incidents"
+    val resolved = if (es) "Resueltos" else "Resolved"
+    val avgResponse = if (es) "Resp. promedio" else "Avg. response"
+    val empty = if (es) "No hay incidentes con estos filtros." else "No incidents match these filters."
+    val shareTitle = if (es) "Historial de incidentes SmartGas" else "SmartGas incident history"
 }
 
-private fun severityStyle(severity: String?): TagSeverity = when (severity.orEmpty().lowercase()) {
-    "critical" -> TagSeverity.Danger
-    "high", "warning" -> TagSeverity.Warning
-    "medium" -> TagSeverity.Info
-    else -> TagSeverity.Success
+/** Color de la etiqueta de estado (ACTIVE rojo, REVIEWED naranja, RESOLVED verde...). */
+private fun statusColor(status: String?): Color = when (normalizeStatus(status)) {
+    "active" -> Red
+    "reviewed" -> Orange
+    "resolved" -> TagSuccess
+    "falsealarm" -> TagSecondary
+    else -> Blue
 }
 
-private fun statusStyle(status: String?): TagSeverity = when (status.orEmpty().lowercase()) {
-    "active" -> TagSeverity.Danger
-    "reviewed" -> TagSeverity.Warning
-    "resolved" -> TagSeverity.Success
-    "falsealarm", "false alarm" -> TagSeverity.Info
-    else -> TagSeverity.Secondary
+private fun statusLabel(strings: Strings, pageText: PageText, status: String): String =
+    if (normalizeStatus(status) == "falsealarm") pageText.falseAlarm else trStatus(strings, status)
+
+/** "Sep 01 – Oct 05, 2026" */
+private fun formatRange(from: LocalDate, to: LocalDate, spanish: Boolean): String {
+    val locale = if (spanish) Locale("es") else Locale.US
+    val short = DateTimeFormatter.ofPattern("MMM dd", locale)
+    val long = DateTimeFormatter.ofPattern("MMM dd, yyyy", locale)
+    return "${short.format(from)} – ${long.format(to)}"
 }
 
-private val gasRegex = Regex("Gas:\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
-private val tempRegex = Regex("Temp:\\s*([\\d.]+)", RegexOption.IGNORE_CASE)
-
-private fun incidentValueLines(incident: Incident): List<String> {
-    val type = normalizeStatus(incident.type)
-    val rawValue = incident.detectedValue
-
-    val gas = incident.gasLevel?.let(::formatNumber) ?: gasRegex.find(rawValue)?.groupValues?.get(1)
-    val temperature = incident.temperature?.let(::formatNumber) ?: tempRegex.find(rawValue)?.groupValues?.get(1)
-
-    val fallback = listOf(rawValue.ifEmpty { "—" })
-
-    return when (type) {
-        "gasleak" -> if (gas != null) listOf("Gas: $gas ppm") else fallback
-        "hightemperature" -> if (temperature != null) listOf("Temperatura: $temperature °C") else fallback
-        else -> {
-            val lines = mutableListOf<String>()
-
-            if (gas != null) lines.add("Gas: $gas ppm")
-            if (temperature != null) lines.add("Temperatura: $temperature °C")
-
-            lines.ifEmpty { fallback }
-        }
+/** Icono de descarga: comparte el historial filtrado como CSV (correo, Drive, WhatsApp...). */
+private fun shareCsv(context: Context, pageText: PageText, incidents: List<Incident>) {
+    val header = "code,type,zone,sensor,severity,status,detected_at,resolved_at"
+    val rows = incidents.joinToString("\n") { incident ->
+        listOf(
+            incident.code, incident.type, incident.zoneName, incident.sensorCode, incident.severity,
+            incident.status, formatDate(incident.detectedAt), formatDate(incident.resolvedAt)
+        ).joinToString(",") { "\"" + it.replace("\"", "'") + "\"" }
     }
+
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/csv"
+        putExtra(Intent.EXTRA_SUBJECT, pageText.shareTitle)
+        putExtra(Intent.EXTRA_TEXT, "$header\n$rows")
+    }
+    context.startActivity(Intent.createChooser(intent, pageText.export))
 }
 
+/** Diseno 14: History. */
 @Composable
 fun HistoryScreen(viewModel: HistoryViewModel, onOpenIncident: (Int) -> Unit) {
     val strings = LocalStrings.current
     val pageText = PageText(strings.isSpanish)
+    val context = LocalContext.current
     val state = viewModel.state.value
     val data = state.data ?: HistoryData()
-    val loading = state.isLoading
-    val activeTab = viewModel.activeTab.value
+    val filters = data.filters
+    val incidents = data.filtered
 
     ToastEffect(viewModel.toasts)
 
+    // Se recarga cada vez que la pantalla vuelve a mostrarse (por ejemplo, al regresar del detalle).
+    LaunchedEffect(Unit) {
+        viewModel.loadData()
+    }
+
     ContentPage {
-        PageHeader(title = pageText.title, subtitle = pageText.subtitle) {
-            SecondaryButton(
-                label = pageText.refresh,
-                icon = Icons.Outlined.Refresh,
-                loading = loading,
-                onClick = viewModel::loadData
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                pageText.title,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { heading() }
             )
+            IconButton(onClick = { shareCsv(context, pageText, incidents) }, enabled = incidents.isNotEmpty()) {
+                Icon(Icons.Outlined.FileDownload, contentDescription = pageText.export)
+            }
         }
 
-        val tabs = listOf(
-            TAB_ACTIVE to pageText.activeTab,
-            TAB_HISTORY to pageText.historyTab
+        DateRangeField(
+            pageText = pageText,
+            from = filters.from,
+            to = filters.to,
+            onChanged = viewModel::onDateRangeChanged
         )
 
-        PrimaryTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == activeTab }.coerceAtLeast(0)) {
-            tabs.forEach { (tab, label) ->
-                Tab(
-                    selected = activeTab == tab,
-                    onClick = { viewModel.onTabChanged(tab) },
-                    text = { Text(label, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        // Chips: All zones ▾ · Critical · High · False alarm
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+        ) {
+            ZoneChip(
+                pageText = pageText,
+                strings = strings,
+                zones = data.zones,
+                selected = filters.zone,
+                onSelected = viewModel::onZoneChanged
+            )
+            listOf(
+                QUICK_CRITICAL to pageText.critical,
+                QUICK_HIGH to pageText.high,
+                QUICK_FALSE_ALARM to pageText.falseAlarm
+            ).forEach { (key, label) ->
+                FilterChip(
+                    selected = filters.quick == key,
+                    onClick = { viewModel.onQuickFilterToggled(key) },
+                    label = { Text(label) },
+                    shape = RoundedCornerShape(50)
                 )
             }
         }
 
-        if (loading) {
+        // Metricas: Incidents · Resolved · Avg. response
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            StatCard(pageText.incidents, data.totalCount.toString(), Modifier.weight(1f))
+            StatCard(pageText.resolved, data.resolvedCount.toString(), Modifier.weight(1f))
+            StatCard(pageText.avgResponse, data.averageResponseMillis?.let(::formatDuration) ?: "—", Modifier.weight(1f))
+        }
+
+        if (state.isLoading && data.incidents.isEmpty()) {
             LoadingState()
         }
 
-        when (activeTab) {
-            TAB_ACTIVE -> {
-                data.activeIncidents.forEach { incident ->
-                    IncidentCard(strings, pageText, incident, onOpen = { onOpenIncident(incident.id) }) {
-                        IncidentActions(
-                            pageText = pageText,
-                            incident = incident,
-                            onReview = { viewModel.reviewIncident(incident) },
-                            onResolve = { viewModel.resolveIncident(incident) },
-                            onFalseAlarm = { viewModel.markFalseAlarm(incident) }
-                        )
-                    }
-                }
-
-                if (!loading && data.activeIncidents.isEmpty()) {
-                    PanelCard { EmptyMessage(pageText.noActiveIncidents) }
-                }
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (!state.isLoading && incidents.isEmpty()) {
+                EmptyMessage(pageText.empty, modifier = Modifier.padding(16.dp))
             }
-
-            else -> {
-                data.historyIncidents.forEach { incident ->
-                    IncidentCard(strings, pageText, incident, onOpen = { onOpenIncident(incident.id) })
-                }
-
-                if (!loading && data.historyIncidents.isEmpty()) {
-                    PanelCard { EmptyMessage(pageText.noHistoryIncidents) }
+            incidents.forEachIndexed { index, incident ->
+                IncidentRow(
+                    strings = strings,
+                    pageText = pageText,
+                    incident = incident,
+                    onClick = { onOpenIncident(incident.id) }
+                )
+                if (index < incidents.lastIndex) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
             }
         }
     }
 }
 
+/** Campo "Date range" del diseno; abre un selector de rango y se puede limpiar. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun IncidentCard(
-    strings: Strings,
+private fun DateRangeField(
     pageText: PageText,
-    incident: Incident,
-    onOpen: () -> Unit,
-    actions: (@Composable () -> Unit)? = null
+    from: LocalDate?,
+    to: LocalDate?,
+    onChanged: (LocalDate?, LocalDate?) -> Unit
 ) {
-    // Toda la tarjeta abre el detalle (diseno 13)
-    PanelCard(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onOpen)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    var open by remember { mutableStateOf(false) }
+    val hasRange = from != null && to != null
+
+    Box {
+        OutlinedTextField(
+            value = if (from != null && to != null) formatRange(from, to, pageText.es) else pageText.allDates,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(pageText.dateRange) },
+            trailingIcon = {
+                if (hasRange) {
+                    IconButton(onClick = { onChanged(null, null) }) {
+                        Icon(Icons.Outlined.Close, contentDescription = pageText.clear)
+                    }
+                } else {
+                    Icon(Icons.Outlined.CalendarMonth, contentDescription = pageText.pickRange)
+                }
+            },
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Capa transparente: tocar el campo abre el selector (sin enfocar el texto).
+        // Deja libre el borde derecho para que la ✕ siga funcionando.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(end = if (hasRange) 56.dp else 0.dp)
+                .clickable { open = true }
+        )
+    }
+
+    if (open) {
+        // El selector trabaja en milisegundos UTC (medianoche de cada dia)
+        val pickerState = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = from?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli(),
+            initialSelectedEndDateMillis = to?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { open = false },
+            confirmButton = {
+                TextButton(
+                    enabled = pickerState.selectedStartDateMillis != null,
+                    onClick = {
+                        val start = pickerState.selectedStartDateMillis?.let {
+                            Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+                        }
+                        // Si solo se eligio un dia, el rango es ese dia
+                        val end = pickerState.selectedEndDateMillis?.let {
+                            Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+                        } ?: start
+                        onChanged(start, end)
+                        open = false
+                    }
+                ) { Text(pageText.apply) }
+            },
+            dismissButton = {
+                TextButton(onClick = { open = false }) { Text(pageText.cancel) }
+            }
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(incident.code, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    trIncidentType(strings, incident.type),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+            DateRangePicker(state = pickerState, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+/** Chip "All zones ▾" con menu desplegable. */
+@Composable
+private fun ZoneChip(
+    pageText: PageText,
+    strings: Strings,
+    zones: List<String>,
+    selected: String?,
+    onSelected: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        FilterChip(
+            selected = true,
+            onClick = { expanded = true },
+            label = { Text(selected?.let { trZone(strings, it) } ?: pageText.allZones) },
+            trailingIcon = { Icon(Icons.Outlined.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            shape = RoundedCornerShape(50)
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(pageText.allZones) },
+                onClick = {
+                    onSelected(null)
+                    expanded = false
+                }
+            )
+            zones.forEach { zone ->
+                DropdownMenuItem(
+                    text = { Text(trZone(strings, zone)) },
+                    onClick = {
+                        onSelected(zone)
+                        expanded = false
+                    }
                 )
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Tag(value = trSeverity(strings, incident.severity), severity = severityStyle(incident.severity))
-                Tag(value = trStatus(strings, incident.status), severity = statusStyle(incident.status))
-            }
         }
-
-        Column {
-            DetailRow(pageText.zone, trZone(strings, incident.zoneName))
-            DetailRow(pageText.sensor, incident.sensorCode.ifEmpty { "Sensor ${incident.sensorId ?: "—"}" })
-            DetailRow(pageText.detectedValue, incidentValueLines(incident).joinToString("\n"))
-            DetailRow(pageText.detectedAt, formatDate(incident.detectedAt))
-        }
-
-        actions?.invoke()
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Tarjeta pequena de metrica ("Incidents 12"). */
 @Composable
-private fun IncidentActions(
-    pageText: PageText,
-    incident: Incident,
-    onReview: () -> Unit,
-    onResolve: () -> Unit,
-    onFalseAlarm: () -> Unit
-) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        if (canReview(incident)) {
-            SecondaryButton(label = pageText.review, onClick = onReview)
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
-        if (canClose(incident)) {
-            PrimaryButton(label = pageText.resolve, onClick = onResolve, containerColor = TagSuccess)
-            PrimaryButton(label = pageText.falseAlarm, onClick = onFalseAlarm, containerColor = TagWarning)
+    }
+}
+
+/** Fila del historial: icono, tipo, zona · fecha y estado. Abre el detalle (diseno 13). */
+@Composable
+private fun IncidentRow(strings: Strings, pageText: PageText, incident: Incident, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Blue.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Outlined.History, contentDescription = null, tint = Blue)
         }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                trIncidentType(strings, incident.type),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "${trZone(strings, incident.zoneName)} · ${formatListDateTime(incident.detectedAt, strings.isSpanish)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        SoftPill(statusLabel(strings, pageText, incident.status), statusColor(incident.status))
     }
 }

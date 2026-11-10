@@ -9,7 +9,7 @@ const now = () => new Date().toISOString();
 
 db.incidents[0].status = 'Active';
 db.incidents.push({ id: 2, accountId: 1, type: 'HighTemperature', zoneId: 1, zoneName: 'Main Kitchen', sensorId: 2, sensorCode: 'SG-002',
-  detectedValue: 'Temp: 61 °C', temperature: 61, severity: 'Critical', status: 'Resolved', detectedAt: '2026-05-10T10:00:00Z' });
+  detectedValue: 'Temp: 61 °C', temperature: 61, severity: 'Critical', status: 'Resolved', detectedAt: '2026-05-10T10:00:00Z', resolvedAt: '2026-05-10T10:04:00Z' });
 db.alerts[0].status = 'Active';
 db.sensors.forEach(s => { s.type = s.type === 'Gas LP' ? 'Gas' : s.type; });
 

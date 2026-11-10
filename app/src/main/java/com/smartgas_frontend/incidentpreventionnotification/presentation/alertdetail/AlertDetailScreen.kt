@@ -1,9 +1,5 @@
 package com.smartgas_frontend.incidentpreventionnotification.presentation.alertdetail
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.smartgas_frontend.incidentdetection.domain.model.Incident
+import com.smartgas_frontend.incidentpreventionnotification.presentation.components.alertSeverityColor
 import com.smartgas_frontend.shared.i18n.LocalStrings
 import com.smartgas_frontend.shared.presentation.components.AlertBanner
 import com.smartgas_frontend.shared.presentation.components.ContentPage
@@ -58,6 +55,7 @@ import com.smartgas_frontend.shared.utils.formatIncidentNotification
 import com.smartgas_frontend.shared.utils.formatNumber
 import com.smartgas_frontend.shared.utils.normalizeStatus
 import com.smartgas_frontend.shared.utils.TagSeverity
+import com.smartgas_frontend.shared.utils.dialPhone
 import com.smartgas_frontend.shared.utils.trIncidentType
 import com.smartgas_frontend.shared.utils.trSeverity
 import com.smartgas_frontend.shared.utils.trZone
@@ -65,7 +63,6 @@ import com.smartgas_frontend.ui.theme.Blue
 import com.smartgas_frontend.ui.theme.Green
 import com.smartgas_frontend.ui.theme.Red
 import com.smartgas_frontend.ui.theme.TagSuccess
-import com.smartgas_frontend.ui.theme.Yellow
 
 /** Textos propios de la pagina (mismo patron PageText que el resto de pantallas). */
 private class PageText(val es: Boolean) {
@@ -111,21 +108,6 @@ private class PageText(val es: Boolean) {
             "Leave the area and call your contact or 116."
         )
     }
-}
-
-/** Color de la tarjeta principal segun la severidad. */
-private fun severityColor(severity: String?): Color = when (severity.orEmpty().lowercase()) {
-    "critical", "high" -> Red
-    "medium", "warning" -> Yellow
-    else -> Blue
-}
-
-/** Abre el marcador del telefono con el numero ya escrito (ACTION_DIAL no necesita permisos). */
-private fun dial(context: Context, phone: String): Boolean = try {
-    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-    true
-} catch (e: ActivityNotFoundException) {
-    false
 }
 
 /** Diseno 12: detalle de alerta. */
@@ -184,7 +166,7 @@ fun AlertDetailScreen(
             // Tarjeta principal: hora, tipo, zona y sensor
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = severityColor(severity)),
+                colors = CardDefaults.cardColors(containerColor = alertSeverityColor(severity)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -272,7 +254,7 @@ fun AlertDetailScreen(
                 label = if (data.contactName.isNotBlank()) "${pageText.callContact} · ${data.contactName}" else pageText.callContact,
                 icon = Icons.Outlined.Call,
                 enabled = data.contactPhone.isNotBlank(),
-                onClick = { dialError = !dial(context, data.contactPhone) },
+                onClick = { dialError = !dialPhone(context, data.contactPhone) },
                 modifier = Modifier.fillMaxWidth()
             )
             if (data.contactPhone.isBlank()) {
@@ -283,7 +265,7 @@ fun AlertDetailScreen(
                 label = pageText.call116,
                 icon = Icons.Outlined.LocalFireDepartment,
                 containerColor = Red,
-                onClick = { dialError = !dial(context, FIRE_DEPARTMENT_PHONE) },
+                onClick = { dialError = !dialPhone(context, FIRE_DEPARTMENT_PHONE) },
                 modifier = Modifier.fillMaxWidth()
             )
 
